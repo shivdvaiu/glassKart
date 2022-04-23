@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "902530716588",
+    "project_id": "products-app-e9c6b",
+    "storage_bucket": "products-app-e9c6b.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:902530716588:android:b425a32a0325c3bc25e009",
+        "android_client_info": {
+          "package_name": "com.example.eye_glass_store"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "902530716588-1cfm1m1vflml9cvv6vjuvmoail0pec1a.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyC-uoriX5I0IRXdorInczrwDQVkwQaXLUI"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "902530716588-1cfm1m1vflml9cvv6vjuvmoail0pec1a.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
