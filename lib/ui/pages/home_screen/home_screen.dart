@@ -49,13 +49,14 @@ class _HomeScreenState extends State<HomeScreen> {
 
   FirebaseAuth firebaseAuth = locator.get<FirebaseAuth>();
   TextEditingController searchProductController = TextEditingController();
-
+  SharedPreferences pref = locator.get<SharedPreferences>();
   @override
   Widget build(BuildContext context) {
     var homeViewProvider = context.read<HomeViewModel>();
     var colorScheme = Theme.of(context).colorScheme;
     var textTheme = Theme.of(context).textTheme;
     return AdvancedDrawer(
+      openRatio: 0.60,
       controller: _advancedDrawerController,
       childDecoration: BoxDecoration(
         borderRadius: const BorderRadius.all(Radius.circular(16)),
@@ -65,41 +66,44 @@ class _HomeScreenState extends State<HomeScreen> {
           SizedBox(
             height: 40,
           ),
-          BackdropFilter(
-            filter: new ImageFilter.blur(sigmaX: 10.0, sigmaY: 10.0),
-            child: new UserAccountsDrawerHeader(
-              decoration: BoxDecoration(
-                  color: colorScheme.primary,
-                  borderRadius: BorderRadius.circular(13)),
-              currentAccountPicture: new CircleAvatar(
-                radius: 50.0,
-                backgroundColor: colorScheme.primary,
-                backgroundImage: NetworkImage(
-                    "https://cdn.pixabay.com/photo/2020/07/01/12/58/icon-5359553_1280.png"),
-              ),
-              accountEmail: Text(firebaseAuth.currentUser!.email!,
-                  style: textTheme.headline1!
-                      .copyWith(fontSize: 8.sp, color: Colors.white)),
-              accountName: StreamBuilder(
-                stream: FirebaseFirestore.instance
-                    .collection(AppConstants.users)
-                    .doc(firebaseAuth.currentUser!.uid)
-                    .snapshots(),
-                builder:
-                    (BuildContext context, AsyncSnapshot<dynamic> snapshot) {
-                  if (snapshot.connectionState == ConnectionState.waiting) {
-                    return SizedBox();
-                  }
+          FirebaseAuth.instance.currentUser != null
+              ? BackdropFilter(
+                  filter: new ImageFilter.blur(sigmaX: 10.0, sigmaY: 10.0),
+                  child: new UserAccountsDrawerHeader(
+                    decoration: BoxDecoration(
+                        color: colorScheme.primary,
+                        borderRadius: BorderRadius.circular(13)),
+                    currentAccountPicture: new CircleAvatar(
+                      radius: 50.0,
+                      backgroundColor: colorScheme.primary,
+                      backgroundImage: NetworkImage(
+                          "https://cdn.pixabay.com/photo/2020/07/01/12/58/icon-5359553_1280.png"),
+                    ),
+                    accountEmail: Text(firebaseAuth.currentUser!.email!,
+                        style: textTheme.headline1!
+                            .copyWith(fontSize: 8.sp, color: Colors.white)),
+                    accountName: StreamBuilder(
+                      stream: FirebaseFirestore.instance
+                          .collection(AppConstants.users)
+                          .doc(firebaseAuth.currentUser!.uid)
+                          .snapshots(),
+                      builder: (BuildContext context,
+                          AsyncSnapshot<dynamic> snapshot) {
+                        if (snapshot.connectionState ==
+                            ConnectionState.waiting) {
+                          return SizedBox();
+                        }
 
-                  UserModel user = UserModel.fromSnap(snapshot.data);
+                        UserModel user = UserModel.fromSnap(snapshot.data);
 
-                  return Text(user.username,
-                      style: textTheme.headline1!
-                          .copyWith(fontSize: 11.sp, color: Colors.white));
-                },
-              ),
-            ),
-          ),
+                        return Text(user.username,
+                            style: textTheme.headline1!.copyWith(
+                                fontSize: 11.sp, color: Colors.white));
+                      },
+                    ),
+                  ),
+                )
+              : SizedBox(),
           SizedBox(
             height: 10.h,
           ),
@@ -115,9 +119,13 @@ class _HomeScreenState extends State<HomeScreen> {
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Text("Logout",
-                      style: textTheme.headline1!
-                          .copyWith(fontSize: 14.sp, color: Colors.white)),
+                  FirebaseAuth.instance.currentUser != null
+                      ? Text("Logout",
+                          style: textTheme.headline1!
+                              .copyWith(fontSize: 14.sp, color: Colors.white))
+                      : Text("Login",
+                          style: textTheme.headline1!
+                              .copyWith(fontSize: 14.sp, color: Colors.white)),
                   SizedBox(
                     width: 10,
                   ),
@@ -126,7 +134,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     color: Colors.white,
                   )
                 ],
-              ))
+              )),
         ]),
       ),
       child: StreamBuilder(
@@ -365,60 +373,107 @@ class _HomeScreenState extends State<HomeScreen> {
                                               itemBuilder:
                                                   (BuildContext context,
                                                       int index) {
+                                                if (homeViewProvider
+                                                    .allProducts.isNotEmpty) {
+                                                  sliderImages.add(
+                                                      homeViewProvider
+                                                          .allProducts[index]
+                                                          .productImage!);
+                                                }
 
-                                                        if(homeViewProvider
-                                                        .allProducts.isNotEmpty){
- sliderImages.add(
-   
-                                                    homeViewProvider
-                                                        .allProducts[index]
-                                                        .productImage!);
+                                                return homeViewProvider
+                                                        .allProducts.isNotEmpty
+                                                    ? Padding(
+                                                        padding:
+                                                            const EdgeInsets
+                                                                .all(10.0),
+                                                        child: ProductCard(
+                                                          addToCart: () {
+                                                            if (FirebaseAuth
+                                                                    .instance
+                                                                    .currentUser !=
+                                                                null) {
+                                                              showCircularProgressBar(
+                                                                  context:
+                                                                      context);
+                                                              homeViewModel
+                                                                  .addToCart(
+                                                                userId: firebaseAuth
+                                                                    .currentUser!
+                                                                    .uid,
+                                                                product:
+                                                                    homeViewModel
+                                                                            .allProducts[
+                                                                        index],
+                                                              )
+                                                                  .then(
+                                                                      (value) {
+                                                                Navigator.pop(
+                                                                    context);
 
+                                                                showSnackBar(
+                                                                    context,
+                                                                    "${homeViewModel.allProducts[index].productName!} added to cart");
+                                                              });
+                                                            } else {
+                                                              showCircularProgressBar(
+                                                                  context:
+                                                                      context);
+                                                              homeViewModel
+                                                                  .addToCartUsingSharedPref(
+                                                                product:
+                                                                    homeViewModel
+                                                                            .allProducts[
+                                                                        index],
+                                                              )
+                                                                  .then(
+                                                                      (value) {
+                                                                Navigator.pop(
+                                                                    context);
 
-                                                        }
-                                               
-                                                return Padding(
-                                                  padding: const EdgeInsets.all(
-                                                      10.0),
-                                                  child: ProductCard(
-                                                    addToCart: () {
-                                                      showCircularProgressBar(
-                                                          context: context);
-                                                      homeViewModel
-                                                          .addToCart(
-                                                        userId: firebaseAuth
-                                                            .currentUser!.uid,
-                                                        product: homeViewModel
-                                                            .allProducts[index],
+                                                                showSnackBar(
+                                                                    context,
+                                                                    "${homeViewModel.allProducts[index].productName!} added to cart");
+                                                              });
+                                                            }
+                                                          },
+                                                          onTap: () {},
+                                                          productName:
+                                                              homeViewModel
+                                                                  .allProducts[
+                                                                      index]
+                                                                  .productName!,
+                                                          productImage:
+                                                              homeViewModel
+                                                                  .allProducts[
+                                                                      index]
+                                                                  .productImage!,
+                                                          productOldPrice:
+                                                              homeViewModel
+                                                                  .allProducts[
+                                                                      index]
+                                                                  .productOldPrice!,
+                                                          productPrice:
+                                                              homeViewModel
+                                                                  .allProducts[
+                                                                      index]
+                                                                  .productPrice!,
+                                                          productSalePercent:
+                                                              "24% Off",
+                                                          productBrand:
+                                                              homeViewModel
+                                                                  .allProducts[
+                                                                      index]
+                                                                  .productBrand!,
+                                                        ),
                                                       )
-                                                          .then((value) {
-                                                        Navigator.pop(context);
-
-                                                        showSnackBar(context,
-                                                            "${homeViewModel.allProducts[index].productName!} added to cart");
-                                                      });
-                                                    },
-                                                    onTap: () {},
-                                                    productName: homeViewModel
-                                                        .allProducts[index]
-                                                        .productName!,
-                                                    productImage: homeViewModel
-                                                        .allProducts[index]
-                                                        .productImage!,
-                                                    productOldPrice:
-                                                        homeViewModel
-                                                            .allProducts[index]
-                                                            .productOldPrice!,
-                                                    productPrice: homeViewModel
-                                                        .allProducts[index]
-                                                        .productPrice!,
-                                                    productSalePercent:
-                                                        "24% Off",
-                                                    productBrand: homeViewModel
-                                                        .allProducts[index]
-                                                        .productBrand!,
-                                                  ),
-                                                );
+                                                    : Center(
+                                                        child: Text(
+                                                        "No Products Found",
+                                                        style: TextStyle(
+                                                            color:
+                                                                Colors.black),
+                                                      ));
                                               },
                                               staggeredTileBuilder:
                                                   (int index) =>

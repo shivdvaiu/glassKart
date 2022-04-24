@@ -28,6 +28,8 @@ void main() async {
     DeviceOrientation.portraitDown,
   ]);
 
+
+
 if (Platform.isIOS) {
     await Firebase.initializeApp(
         options: FirebaseOptions(
@@ -52,7 +54,7 @@ if (Platform.isIOS) {
               debugShowCheckedModeBanner: false,
               theme: AppThemes.primaryMaterialTheme,
               home: EyeGlassStore(
-                body: isUserLoggedIn ? HomeScreen() : LoginScreen(),
+                body:  HomeScreen(),
               )));
     },
   ));

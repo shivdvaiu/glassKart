@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:developer';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -15,9 +16,18 @@ import 'package:eye_glass_store/utils/utilities/dialogs/circular_dialog.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sizer/sizer.dart';
 
-class CartScreen extends StatelessWidget {
+class CartScreen extends StatefulWidget {
+  @override
+  State<CartScreen> createState() => _CartScreenState();
+}
+
+class _CartScreenState extends State<CartScreen> {
+  /// using shared prefs
+  List<Products> cartProducts = [];
+
   @override
   Widget build(BuildContext context) {
     var colorScheme = Theme.of(context).colorScheme;
@@ -31,41 +41,64 @@ class CartScreen extends StatelessWidget {
           Navigator.pop(context);
         },
       ),
-      body: StreamBuilder(
-        stream: FirebaseFirestore.instance
-            .collection(AppConstants.cart)
-            .doc(firebaseAuth.currentUser!.uid)
-            .collection(AppConstants.cartProducts)
-            .snapshots(),
-        builder: (BuildContext context, AsyncSnapshot<dynamic> snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return Center(
-              child: Center(
-                child: CircularProgressIndicator(
-                  color: Theme.of(context).colorScheme.secondary,
-                ),
-              ),
-            );
-          }
+      body: FirebaseAuth.instance.currentUser != null
+          ? StreamBuilder(
+              stream: FirebaseFirestore.instance
+                  .collection(AppConstants.cart)
+                  .doc(firebaseAuth.currentUser!.uid)
+                  .collection(AppConstants.cartProducts)
+                  .snapshots(),
+              builder: (BuildContext context, AsyncSnapshot<dynamic> snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return Center(
+                    child: Center(
+                      child: CircularProgressIndicator(
+                        color: Theme.of(context).colorScheme.secondary,
+                      ),
+                    ),
+                  );
+                }
 
-          var cartProducts = List.generate(
-              snapshot.data.docs.length,
-              (index) => Products.fromJson(
-                  snapshot.data.docs[index].data() as Map<String, dynamic>));
-          if (cartProducts.isEmpty) {
-            Navigator.pop(context);
-          }
-          return ListView.builder(
-              itemCount: cartProducts.length,
+                var cartProducts = List.generate(
+                    snapshot.data.docs.length,
+                    (index) => Products.fromJson(snapshot.data.docs[index]
+                        .data() as Map<String, dynamic>));
+                if (cartProducts.isEmpty) {
+                  Navigator.pop(context);
+                }
+                return ListView.builder(
+                    itemCount: cartProducts.length,
+                    itemBuilder: (context, i) {
+                      return Padding(
+                        padding: const EdgeInsets.all(8.0),
+                        child: _card(textTheme, colorScheme, context,
+                            cartProducts[i], homeViewProvider, i),
+                      );
+                    });
+              },
+            )
+          : ListView.builder(
+              itemCount: locator
+                      .get<SharedPreferences>()
+                      .getStringList(AppConstants.cart)
+                      ?.length ??
+                  0,
               itemBuilder: (context, i) {
+                var cartList = locator
+                    .get<SharedPreferences>()
+                    .getStringList(AppConstants.cart);
+
+                cartProducts = cartList!
+                    .map((i) => Products.fromJson(jsonDecode(i)))
+                    .toList();
+
+               
                 return Padding(
                   padding: const EdgeInsets.all(8.0),
                   child: _card(textTheme, colorScheme, context, cartProducts[i],
-                      homeViewProvider),
+                      homeViewProvider, i),
                 );
-              });
-        },
-      ),
+              }),
       appBar: AppBar(
           leading: IconButton(
             onPressed: () {
@@ -88,7 +121,7 @@ class CartScreen extends StatelessWidget {
   }
 
   Widget _card(TextTheme textTheme, ColorScheme colorScheme, context,
-      Products product, homeViewProvider) {
+      Products product, homeViewProvider, index) {
     return Container(
       margin: EdgeInsets.only(top: 10),
       child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -144,12 +177,27 @@ class CartScreen extends StatelessWidget {
         ),
         IconButton(
           onPressed: () {
-            FirebaseFirestore.instance
-                .collection(AppConstants.cart)
-                .doc(FirebaseAuth.instance.currentUser!.uid)
-                .collection(AppConstants.cartProducts)
-                .doc(product.productId)
-                .delete();
+            if (FirebaseAuth.instance.currentUser != null) {
+              FirebaseFirestore.instance
+                  .collection(AppConstants.cart)
+                  .doc(FirebaseAuth.instance.currentUser!.uid)
+                  .collection(AppConstants.cartProducts)
+                  .doc(product.productId)
+                  .delete();
+            } else {
+              var cartList = locator
+                  .get<SharedPreferences>()
+                  .getStringList(AppConstants.cart);
+              cartProducts.removeAt(index);
+              cartList!.removeAt(index);
+
+              locator
+                  .get<SharedPreferences>()
+                  .setStringList(AppConstants.cart, cartList);
+                  setState(() {
+                    
+                  });
+            }
           },
           icon: Image.asset(AppAssets.deleteIcon2, height: 22),
         )

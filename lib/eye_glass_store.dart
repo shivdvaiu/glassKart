@@ -1,3 +1,8 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:eye_glass_store/data/app_locator/app_locator.dart';
+import 'package:eye_glass_store/data/models/user_model/user_model.dart';
+import 'package:eye_glass_store/utils/constants/app_constants/app_constants.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:local_auth/local_auth.dart';
@@ -18,15 +23,29 @@ class _EyeGlassStoreState extends State<EyeGlassStore> {
   String _authorized = 'Not Authorized';
   bool _isAuthenticating = false;
 
+  FirebaseAuth firebaseAuth = locator.get<FirebaseAuth>();
   @override
   void initState() {
     super.initState();
-    auth.isDeviceSupported().then(
-          (bool isSupported) => setState(() => _supportState = isSupported
-              ? _SupportState.supported
-              : _SupportState.unsupported),
-        );
+
+    if (firebaseAuth.currentUser != null) {
+      FirebaseFirestore.instance
+          .collection(AppConstants.users)
+          .doc(firebaseAuth.currentUser!.uid)
+          .snapshots()
+          .listen((snapshot) {
+        UserModel user = UserModel.fromSnap(snapshot);
+
+        if (user.isSecure) {
+          auth.isDeviceSupported().then(
+                (bool isSupported) => setState(() => _supportState = isSupported
+                    ? _SupportState.supported
+                    : _SupportState.unsupported),
+              );
           _authenticateWithBiometrics();
+        }
+      });
+    }
   }
 
   Future<void> _checkBiometrics() async {
@@ -109,7 +128,6 @@ class _EyeGlassStoreState extends State<EyeGlassStore> {
         options: const AuthenticationOptions(
           useErrorDialogs: true,
           stickyAuth: true,
-      
         ),
       );
       setState(() {
@@ -141,8 +159,7 @@ class _EyeGlassStoreState extends State<EyeGlassStore> {
 
   @override
   Widget build(BuildContext context) {
-
-    return  widget.body;
+    return widget.body;
   }
 }
 

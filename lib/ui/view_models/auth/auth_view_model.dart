@@ -1,9 +1,13 @@
+import 'dart:async';
+import 'dart:developer';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:eye_glass_store/data/app_locator/app_locator.dart';
 import 'package:eye_glass_store/data/enums/auth_enums/auth_enums.dart';
 import 'package:eye_glass_store/data/models/user_model/user_model.dart';
 import 'package:eye_glass_store/ui/resources/app_strings/app_strings.dart';
 import 'package:eye_glass_store/utils/constants/app_constants/app_constants.dart';
+import 'package:eye_glass_store/utils/utilities/snack_bar/snack_bar.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
 import 'package:flutter/cupertino.dart';
@@ -11,12 +15,31 @@ import 'package:flutter/cupertino.dart';
 class AuthViewModel extends ChangeNotifier {
   final FirebaseAuth _firebaseAuth = locator.get<FirebaseAuth>();
   final FirebaseFirestore _cloudFirestore = locator.get<FirebaseFirestore>();
+  bool isEmailVerified = false;
 
-  Future<SignUpState> signUpUserUsingFirebase({
-    required String email,
-    required String password,
-    required String username,
-  }) async {
+  get isEmailVerifiedStatus => isEmailVerified;
+
+  set setEmailToVerified(bool value) {
+    isEmailVerified = value;
+
+    notifyListeners();
+  }
+
+  Future sendVerifiedEmail(User user) async {
+    try {
+      await user.sendEmailVerification();
+    } catch (e) {
+      log(e.toString());
+    }
+  }
+
+  Future<SignUpState> signUpUserUsingFirebase(
+      {required String email,
+      required String password,
+      required String username,
+      required BuildContext context,
+      required String address,
+      required bool isSecure}) async {
     if (isValidated(
           email,
           password,
@@ -26,18 +49,36 @@ class AuthViewModel extends ChangeNotifier {
         UserCredential userCredential = await _firebaseAuth
             .createUserWithEmailAndPassword(email: email, password: password);
 
-        UserModel userModel = UserModel(
-          email: email.trim(),
-          username: username.trim(),
-          
-        );
+        isEmailVerified = userCredential.user!.emailVerified;
 
-        _cloudFirestore
-            .collection(AppConstants.users)
-            .doc(userCredential.user!.uid)
-            .set(userModel.toJson());
+        if (!isEmailVerified) {
+          sendVerifiedEmail(userCredential.user!);
+          return SignUpState.SIGN_UP_SUCCESS;
+          // var timer = await Timer.periodic(Duration(seconds: 3), (timer) {
+          //   isEmailVerified = userCredential.user!.emailVerified;
+          //   notifyListeners();
+          // });
 
-        return SignUpState.SIGN_UP_SUCCESS;
+          // if (isEmailVerified) {
+          //   timer.cancel();
+          //   UserModel userModel = UserModel(
+          //     email: email.trim(),
+          //     username: username.trim(),
+          //     isSecure: isSecure,
+          //     address: address,
+          //   );
+
+          //   _cloudFirestore
+          //       .collection(AppConstants.users)
+          //       .doc(userCredential.user!.uid)
+          //       .set(userModel.toJson());
+
+          //         return SignUpState.SIGN_UP_SUCCESS;
+          // }
+        } else {
+          showSnackBar(context, "Email is already registred");
+          return SignUpState.UNKNOWN_ERROR;
+        }
       } on FirebaseAuthException catch (e) {
         if (e.code == AppStrings.weakPassword) {
           return SignUpState.WEAK_PASSWORD;
