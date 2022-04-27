@@ -63,9 +63,9 @@ class _CartScreenState extends State<CartScreen> {
                     snapshot.data.docs.length,
                     (index) => Products.fromJson(snapshot.data.docs[index]
                         .data() as Map<String, dynamic>));
-                if (cartProducts.isEmpty) {
-                  Navigator.pop(context);
-                }
+                // if (cartProducts.isEmpty) {
+                //   Navigator.pop(context);
+                // }
                 return ListView.builder(
                     itemCount: cartProducts.length,
                     itemBuilder: (context, i) {

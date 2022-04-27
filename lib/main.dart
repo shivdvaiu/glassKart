@@ -19,8 +19,6 @@ import 'package:sizer/sizer.dart';
 import 'package:firebase_core/firebase_core.dart';
 
 void main() async {
-
-
   WidgetsFlutterBinding.ensureInitialized();
   initLocator();
   SystemChrome.setPreferredOrientations([
@@ -28,9 +26,7 @@ void main() async {
     DeviceOrientation.portraitDown,
   ]);
 
-
-
-if (Platform.isIOS) {
+  if (Platform.isIOS) {
     await Firebase.initializeApp(
         options: FirebaseOptions(
             apiKey: "AIzaSyC-uoriX5I0IRXdorInczrwDQVkwQaXLUI",
@@ -40,10 +36,11 @@ if (Platform.isIOS) {
   } else {
     await Firebase.initializeApp();
   }
-
-
-  SharedPreferences prefs = await SharedPreferences.getInstance();
-  bool isUserLoggedIn = prefs.getBool(AppConstants.isUserLoggedIn) ?? false;
+  bool isUserLoggedIn;
+  if (kIsWeb == false) {
+    SharedPreferences  prefs= locator.get<SharedPreferences>();
+    isUserLoggedIn = prefs.getBool(AppConstants.isUserLoggedIn) ?? false;
+  }
 
   runApp(Sizer(
     builder: (context, orientation, deviceType) {
@@ -54,13 +51,11 @@ if (Platform.isIOS) {
               debugShowCheckedModeBanner: false,
               theme: AppThemes.primaryMaterialTheme,
               home: EyeGlassStore(
-                body:  HomeScreen(),
+                body: HomeScreen(),
               )));
     },
   ));
 }
-
-
 
 List<SingleChildWidget> _getProviders() {
   return [
